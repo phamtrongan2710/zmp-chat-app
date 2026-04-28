@@ -1,4 +1,5 @@
 import { useChatStore } from "../../store/chat-store";
+import { Avatar } from "./avatar";
 
 export function ConversationView() {
   const selfUserId = useChatStore((state) => state.selfUserId);
@@ -29,7 +30,7 @@ export function ConversationView() {
 
           return (
             <div key={message.id} className={`message-row ${isSelf ? "self" : ""}`}>
-              {!isSelf ? <div className="message-avatar">{peer?.avatarLabel ?? "?"}</div> : null}
+              {!isSelf ? <Avatar url={peer?.avatarUrl ?? null} label={peer?.avatarLabel ?? "?"} className="message-avatar" /> : null}
               <div className="message-bubble">
                 <div>{message.content}</div>
                 <div className="message-meta">
@@ -42,7 +43,7 @@ export function ConversationView() {
         })}
         {peerIsTyping ? (
           <div className="message-row">
-            <div className="message-avatar">{peer?.avatarLabel ?? "?"}</div>
+            <Avatar url={peer?.avatarUrl ?? null} label={peer?.avatarLabel ?? "?"} className="message-avatar" />
             <div className="message-bubble typing-bubble" aria-label={`${peer?.name ?? "Peer"} is typing`}>
               <div className="typing-placeholder" aria-hidden="true">
                 <span className="typing-dot" />

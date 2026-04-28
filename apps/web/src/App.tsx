@@ -6,7 +6,7 @@ import { ConversationView } from "./components/chat/conversation-view";
 import { Composer } from "./components/chat/composer";
 import { setUnauthorizedHandler } from "./lib/api-client";
 import { readAppJwt } from "./lib/auth-session";
-import type { Message } from "./store/chat-store";
+import type { Chat, Message } from "./store/chat-store";
 import { useChatStore } from "./store/chat-store";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "https://localhost:3000";
@@ -16,6 +16,7 @@ export function App() {
   const disconnectRealtime = useChatStore((state) => state.disconnectRealtime);
   const setSocket = useChatStore((state) => state.setSocket);
   const receiveMessage = useChatStore((state) => state.receiveMessage);
+  const acceptIncomingChat = useChatStore((state) => state.acceptIncomingChat);
   const updatePresence = useChatStore((state) => state.updatePresence);
   const syncPresence = useChatStore((state) => state.syncPresence);
   const updateTyping = useChatStore((state) => state.updateTyping);
@@ -34,7 +35,6 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    if (!readAppJwt()) return;
     void initialize();
   }, [initialize]);
 
@@ -44,9 +44,15 @@ export function App() {
       return;
     }
 
+    const token = readAppJwt();
+    if (!token) {
+      setSocket(null);
+      return;
+    }
+
     const socket = io(`${API_URL}/chat`, {
       transports: ["websocket"],
-      query: { userId: selfUserId },
+      auth: { token },
     });
 
     socket.on("connect", () => {
@@ -58,6 +64,10 @@ export function App() {
 
     socket.on("message.created", (message: Message) => {
       void receiveMessage(message);
+    });
+
+    socket.on("chat.created", (chat: Chat) => {
+      acceptIncomingChat(chat);
     });
 
     socket.on("presence.updated", ({ userId, online }: { userId: string; online: boolean }) => {
@@ -78,7 +88,7 @@ export function App() {
       socket.disconnect();
       setSocket(null);
     };
-  }, [receiveMessage, selfUserId, setSocket, syncPresence, updatePresence, updateTyping]);
+  }, [acceptIncomingChat, receiveMessage, selfUserId, setSocket, syncPresence, updatePresence, updateTyping]);
 
   useEffect(() => {
     const stopRealtime = () => {
@@ -115,7 +125,7 @@ export function App() {
       <main className="auth-shell">
         <section className="auth-card">
           <div className="brand">ZMP Chat</div>
-          <p className="muted">Loading local session...</p>
+          <p className="muted">Loading session...</p>
         </section>
       </main>
     );

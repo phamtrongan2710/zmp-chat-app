@@ -1,11 +1,23 @@
+import { useState } from "react";
 import { useChatStore } from "../../store/chat-store";
+import { Avatar } from "./avatar";
+import { NewChat } from "./new-chat";
 
 export function ChatSidebar() {
   const chats = useChatStore((state) => state.chats);
   const activeChatId = useChatStore((state) => state.activeChatId);
   const setActiveChat = useChatStore((state) => state.setActiveChat);
   const selfUser = useChatStore((state) => state.selfUser);
-  const clearSession = useChatStore((state) => state.clearSession);
+  const signOut = useChatStore((state) => state.signOut);
+  const [showNewChat, setShowNewChat] = useState(false);
+
+  if (showNewChat) {
+    return (
+      <aside className="sidebar">
+        <NewChat onClose={() => setShowNewChat(false)} />
+      </aside>
+    );
+  }
 
   return (
     <aside className="sidebar">
@@ -14,14 +26,30 @@ export function ChatSidebar() {
           <div className="brand">ZMP Chat</div>
           <div className="muted">{selfUser?.handle}</div>
         </div>
-        <button className="status-pill clickable-pill" onClick={clearSession} type="button">
-          switch
-        </button>
+        <div className="sidebar-actions">
+          <button
+            className="status-pill clickable-pill"
+            onClick={() => setShowNewChat(true)}
+            type="button"
+          >
+            new
+          </button>
+          <button
+            className="status-pill clickable-pill"
+            onClick={() => void signOut()}
+            type="button"
+          >
+            sign out
+          </button>
+        </div>
       </div>
 
       <input className="sidebar-search" placeholder="Search conversations" />
 
       <div className="chat-list">
+        {chats.length === 0 ? (
+          <p className="muted">No chats yet. Use "new" to start one.</p>
+        ) : null}
         {chats.map((chat) => {
           const lastMessage = chat.messages.at(-1);
           const peer = chat.participants.find((user) => user.id !== selfUser?.id);
@@ -33,7 +61,7 @@ export function ChatSidebar() {
               onClick={() => setActiveChat(chat.id)}
               type="button"
             >
-              <div className="avatar">{peer?.avatarLabel ?? "DM"}</div>
+              <Avatar url={peer?.avatarUrl ?? null} label={peer?.avatarLabel ?? "DM"} />
               <div>
                 <div className="chat-list-item-title">{chat.title}</div>
                 <div className="chat-list-item-preview">{lastMessage?.content ?? "No messages yet"}</div>
