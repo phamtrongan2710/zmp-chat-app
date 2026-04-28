@@ -112,14 +112,6 @@ export function ConversationView() {
 
   return (
     <>
-      <header className="conversation-header">
-        <div>
-          <div className="brand">{peer?.name ?? chat.title}</div>
-          <div className="muted">{peerIsTyping ? "typing..." : peer?.online ? "online now" : "offline"}</div>
-        </div>
-        <div className="status-pill">local realtime</div>
-      </header>
-
       <section className="messages" ref={messagesRef}>
         {chat.hasMore ? <div ref={sentinelRef} className="messages-sentinel" aria-hidden="true" /> : null}
         {isLoadingOlder ? <div className="messages-loading muted">Loading older messages...</div> : null}

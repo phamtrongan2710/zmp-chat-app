@@ -1,9 +1,6 @@
-import { useEffect } from "react";
+import { ReactNode, useEffect } from "react";
 import { io } from "socket.io-client";
 import { AuthScreen } from "./components/chat/auth-screen";
-import { ChatSidebar } from "./components/chat/chat-sidebar";
-import { ConversationView } from "./components/chat/conversation-view";
-import { Composer } from "./components/chat/composer";
 import { setUnauthorizedHandler } from "./lib/api-client";
 import { readAppJwt } from "./lib/auth-session";
 import type { Chat, Message } from "./store/chat-store";
@@ -11,7 +8,11 @@ import { useChatStore } from "./store/chat-store";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "https://localhost:3000";
 
-export function App() {
+type AppProps = {
+  children: ReactNode;
+};
+
+export function App({ children }: AppProps) {
   const initialize = useChatStore((state) => state.initialize);
   const disconnectRealtime = useChatStore((state) => state.disconnectRealtime);
   const setSocket = useChatStore((state) => state.setSocket);
@@ -139,15 +140,5 @@ export function App() {
     return <AuthScreen />;
   }
 
-  return (
-    <main className="app-shell">
-      <section className="telegram-shell">
-        <ChatSidebar />
-        <div className="conversation-shell">
-          <ConversationView />
-          <Composer />
-        </div>
-      </section>
-    </main>
-  );
+  return <>{children}</>;
 }
