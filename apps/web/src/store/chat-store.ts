@@ -29,11 +29,17 @@ export type Chat = {
   title: string;
   participants: User[];
   messages: Message[];
+  hasMore: boolean;
 };
 
 type BootstrapPayload = {
   self: User;
   chats: Chat[];
+};
+
+type MessagePagePayload = {
+  messages: Message[];
+  hasMore: boolean;
 };
 
 type ChatState = {
@@ -44,6 +50,7 @@ type ChatState = {
   socket: Socket | null;
   typingByChat: Record<string, string[]>;
   isHydrated: boolean;
+  isLoadingOlderByChat: Record<string, boolean>;
   initialize: () => Promise<void>;
   hydrate: () => Promise<void>;
   setActiveChat: (chatId: string) => void;
@@ -54,6 +61,7 @@ type ChatState = {
   receiveMessage: (message: Message) => Promise<void>;
   acceptIncomingChat: (chat: Chat) => void;
   startChatWith: (peerUserId: string) => Promise<string | null>;
+  loadOlderMessages: (chatId: string) => Promise<void>;
   updatePresence: (userId: string, online: boolean) => void;
   syncPresence: (onlineUserIds: string[]) => void;
   sendTyping: (isTyping: boolean) => void;
@@ -72,6 +80,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   socket: null,
   typingByChat: {},
   isHydrated: false,
+  isLoadingOlderByChat: {},
   initialize: async () => {
     if (!readAppJwt()) {
       set({ isHydrated: true });
@@ -247,6 +256,60 @@ export const useChatStore = create<ChatState>((set, get) => ({
       return chat.id;
     } catch {
       return null;
+    }
+  },
+  loadOlderMessages: async (chatId: string) => {
+    const state = get();
+    const chat = state.chats.find((item) => item.id === chatId);
+    if (!chat || !chat.hasMore) return;
+    if (state.isLoadingOlderByChat[chatId]) return;
+
+    const oldestMessage = chat.messages[0];
+    if (!oldestMessage) return;
+
+    set((current) => ({
+      isLoadingOlderByChat: { ...current.isLoadingOlderByChat, [chatId]: true },
+    }));
+
+    try {
+      const params = new URLSearchParams({ before: oldestMessage.id });
+      const page = await apiRequest<MessagePagePayload>(
+        `/chat/${chatId}/messages?${params.toString()}`,
+        { method: "GET" },
+      );
+
+      set((current) => {
+        const target = current.chats.find((item) => item.id === chatId);
+        if (!target) return current;
+
+        const knownIds = new Set(target.messages.map((message) => message.id));
+        const newOlder = page.messages.filter((message) => !knownIds.has(message.id));
+        const nextChat: Chat = {
+          ...target,
+          messages: [...newOlder, ...target.messages],
+          hasMore: page.hasMore,
+        };
+
+        const selfUserId = current.selfUserId;
+        if (selfUserId) {
+          void writeConversationCache({
+            chatId: `${selfUserId}:${chatId}`,
+            payload: JSON.stringify(nextChat),
+          });
+        }
+
+        return {
+          chats: current.chats.map((item) => (item.id === chatId ? nextChat : item)),
+        };
+      });
+    } catch {
+      // Swallow — UI remains in current state; user can retry by scrolling again.
+    } finally {
+      set((current) => {
+        const next = { ...current.isLoadingOlderByChat };
+        delete next[chatId];
+        return { isLoadingOlderByChat: next };
+      });
     }
   },
   updatePresence: (userId, online) => {

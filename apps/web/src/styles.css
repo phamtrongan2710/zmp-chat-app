@@ -76,7 +76,7 @@ input {
 .telegram-shell {
   display: grid;
   grid-template-columns: 340px 1fr;
-  min-height: calc(100vh - 48px);
+  height: calc(100vh - 48px);
   border-radius: 28px;
   overflow: hidden;
   border: 1px solid rgba(16, 35, 63, 0.08);
@@ -169,6 +169,7 @@ input {
 .conversation-shell {
   display: grid;
   grid-template-rows: auto 1fr auto;
+  min-height: 0;
 }
 
 .conversation-header {
@@ -178,13 +179,48 @@ input {
 
 .messages {
   padding: 24px;
-  overflow: auto;
+  overflow-y: scroll;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 14px;
   background:
     linear-gradient(rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.1)),
     radial-gradient(circle at center, rgba(89, 180, 255, 0.08), transparent 55%);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(33, 74, 122, 0.35) transparent;
+}
+
+.messages::-webkit-scrollbar {
+  width: 10px;
+}
+
+.messages::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.messages::-webkit-scrollbar-thumb {
+  background: rgba(33, 74, 122, 0.3);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.messages::-webkit-scrollbar-thumb:hover {
+  background: rgba(33, 74, 122, 0.5);
+  background-clip: padding-box;
+  border: 2px solid transparent;
+}
+
+.messages-sentinel {
+  height: 1px;
+  flex: 0 0 auto;
+}
+
+.messages-loading {
+  text-align: center;
+  font-size: 12px;
+  padding: 4px 0 8px;
 }
 
 .message-row {
@@ -328,7 +364,7 @@ input {
   }
 
   .telegram-shell {
-    min-height: 100vh;
+    height: 100vh;
     border-radius: 0;
     grid-template-columns: 1fr;
   }

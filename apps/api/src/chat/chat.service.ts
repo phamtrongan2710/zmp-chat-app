@@ -20,7 +20,15 @@ type Chat = {
   title: string;
   participants: User[];
   messages: Message[];
+  hasMore: boolean;
 };
+
+type MessagePage = {
+  messages: Message[];
+  hasMore: boolean;
+};
+
+const MESSAGE_PAGE_SIZE = 10;
 
 @Injectable()
 export class ChatService {
@@ -56,24 +64,30 @@ export class ChatService {
           orderBy: { userId: "asc" },
         },
         messages: {
-          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+          take: MESSAGE_PAGE_SIZE + 1,
         },
       },
     });
 
-    const chatPayloads = await Promise.all(
-      chatRows.map(async (chat) => {
-        const participants = chat.participants.map((participant) => this.mapUser(participant.user));
-        const peer = participants.find((participant) => participant.id !== self.id);
+    const chatPayloads = chatRows.map((chat) => {
+      const participants = chat.participants.map((participant) => this.mapUser(participant.user));
+      const peer = participants.find((participant) => participant.id !== self.id);
 
-        return {
-          id: chat.id,
-          title: peer?.name ?? "Direct message",
-          participants,
-          messages: chat.messages.map((message) => this.mapMessage(message)),
-        };
-      }),
-    );
+      const hasMore = chat.messages.length > MESSAGE_PAGE_SIZE;
+      const pageRows = hasMore ? chat.messages.slice(0, MESSAGE_PAGE_SIZE) : chat.messages;
+      const messages = pageRows
+        .map((message) => this.mapMessage(message))
+        .reverse();
+
+      return {
+        id: chat.id,
+        title: peer?.name ?? "Direct message",
+        participants,
+        messages,
+        hasMore,
+      };
+    });
 
     return { self, chats: chatPayloads };
   }
@@ -97,7 +111,10 @@ export class ChatService {
       },
       include: {
         participants: { include: { user: true }, orderBy: { userId: "asc" } },
-        messages: { orderBy: [{ createdAt: "asc" }, { id: "asc" }] },
+        messages: {
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+          take: MESSAGE_PAGE_SIZE + 1,
+        },
       },
     });
 
@@ -144,26 +161,64 @@ export class ChatService {
     const participants = chat.participants.map((participant) => this.mapUser(participant.user));
     const peer = participants.find((participant) => participant.id !== viewerUserId);
 
+    const hasMore = chat.messages.length > MESSAGE_PAGE_SIZE;
+    const pageRows = hasMore ? chat.messages.slice(0, MESSAGE_PAGE_SIZE) : chat.messages;
+    const messages = pageRows.map((message) => this.mapMessage(message)).reverse();
+
     return {
       id: chat.id,
       title: peer?.name ?? "Direct message",
       participants,
-      messages: chat.messages.map((message) => this.mapMessage(message)),
+      messages,
+      hasMore,
     };
   }
 
-  async listMessages(chatId: string): Promise<Message[]> {
+  async listMessagesPage(chatId: string, options: { before?: string; limit?: number } = {}): Promise<MessagePage> {
+    const limit = options.limit ?? MESSAGE_PAGE_SIZE;
+
+    let cursor: { createdAt: Date; id: string } | null = null;
+    if (options.before) {
+      const cursorRow = await this.prismaService.message.findUnique({
+        where: { id: options.before },
+        select: { id: true, chatId: true, createdAt: true },
+      });
+      if (!cursorRow || cursorRow.chatId !== chatId) {
+        throw new BadRequestException("Invalid pagination cursor");
+      }
+      cursor = { id: cursorRow.id, createdAt: cursorRow.createdAt };
+    }
+
     const rows = await this.prismaService.message.findMany({
-      where: { chatId },
-      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      where: {
+        chatId,
+        ...(cursor
+          ? {
+              OR: [
+                { createdAt: { lt: cursor.createdAt } },
+                { createdAt: cursor.createdAt, id: { lt: cursor.id } },
+              ],
+            }
+          : {}),
+      },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: limit + 1,
     });
 
-    return rows.map((row) => this.mapMessage(row));
+    const hasMore = rows.length > limit;
+    const pageRows = hasMore ? rows.slice(0, limit) : rows;
+    const messages = pageRows.map((row) => this.mapMessage(row)).reverse();
+
+    return { messages, hasMore };
   }
 
-  async listMessagesForUser(chatId: string, userId: string): Promise<Message[]> {
+  async listMessagesPageForUser(
+    chatId: string,
+    userId: string,
+    options: { before?: string; limit?: number } = {},
+  ): Promise<MessagePage> {
     await this.assertParticipant(chatId, userId);
-    return this.listMessages(chatId);
+    return this.listMessagesPage(chatId, options);
   }
 
   async createMessageForUser(payload: CreateMessageDto, userId: string): Promise<Message> {

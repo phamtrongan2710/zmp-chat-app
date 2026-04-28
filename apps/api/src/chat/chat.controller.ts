@@ -1,10 +1,11 @@
-import { Body, Controller, Get, Param, Post } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, Query } from "@nestjs/common";
 import { CurrentUser } from "../auth/current-user.decorator";
 import { AuthService } from "../auth/auth.service";
 import { ChatGateway } from "./chat.gateway";
 import { ChatService } from "./chat.service";
 import { CreateChatDto } from "./dto/create-chat.dto";
 import { CreateMessageDto } from "./dto/create-message.dto";
+import { ListMessagesQueryDto } from "./dto/list-messages-query.dto";
 
 type CurrentUserPayload = { id: string; sessionId: string };
 
@@ -43,8 +44,15 @@ export class ChatController {
   }
 
   @Get("chat/:chatId/messages")
-  async listMessages(@Param("chatId") chatId: string, @CurrentUser() user: CurrentUserPayload) {
-    return this.chatService.listMessagesForUser(chatId, user.id);
+  async listMessages(
+    @Param("chatId") chatId: string,
+    @Query() query: ListMessagesQueryDto,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.chatService.listMessagesPageForUser(chatId, user.id, {
+      before: query.before,
+      limit: query.limit,
+    });
   }
 
   @Post("chat/messages")
