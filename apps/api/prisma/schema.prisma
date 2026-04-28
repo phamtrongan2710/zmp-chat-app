@@ -1,0 +1,55 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum MessageStatus {
+  sent
+  delivered
+}
+
+model User {
+  id             String            @id
+  name           String
+  handle         String            @unique
+  avatarLabel    String            @map("avatar_label")
+  chatParticipants ChatParticipant[]
+  sentMessages   Message[]         @relation("MessageSender")
+
+  @@map("users")
+}
+
+model Chat {
+  id           String            @id
+  participants ChatParticipant[]
+  messages     Message[]
+
+  @@map("chats")
+}
+
+model ChatParticipant {
+  chatId String @map("chat_id")
+  userId String @map("user_id")
+  chat   Chat   @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([chatId, userId])
+  @@map("chat_participants")
+}
+
+model Message {
+  id        String        @id
+  chatId    String        @map("chat_id")
+  senderId  String        @map("sender_id")
+  content   String
+  createdAt DateTime      @map("created_at")
+  status    MessageStatus
+  chat      Chat          @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  sender    User          @relation("MessageSender", fields: [senderId], references: [id])
+
+  @@map("messages")
+}

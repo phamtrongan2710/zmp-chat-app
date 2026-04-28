@@ -1,0 +1,11 @@
+node_modules
+dist
+.turbo
+.vite
+.env
+.env.local
+coverage
+apps/web/.vercel
+apps/api/dist
+apps/api/node_modules
+apps/web/node_modules

@@ -1,0 +1,15 @@
+{
+  "name": "zmp-chat",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/web",
+    "apps/api"
+  ],
+  "scripts": {
+    "dev:web": "npm --workspace @zmp-chat/web run dev",
+    "dev:api": "npm --workspace @zmp-chat/api run start:dev",
+    "build:web": "npm --workspace @zmp-chat/web run build",
+    "build:api": "npm --workspace @zmp-chat/api run build"
+  }
+}
