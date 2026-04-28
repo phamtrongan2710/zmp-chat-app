@@ -78,7 +78,7 @@ function buildDemoChat(selfUserId: string): Chat {
 
 const seedChat = buildDemoChat(demoUsers[0].id);
 
-const API_URL = "http://localhost:3000";
+const API_URL = import.meta.env.VITE_API_URL ?? "https://localhost:3000";
 
 export const useChatStore = create<ChatState>((set, get) => ({
   selfUserId: null,

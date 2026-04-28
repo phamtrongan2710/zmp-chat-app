@@ -7,7 +7,7 @@ import { Composer } from "./components/chat/composer";
 import type { Message } from "./store/chat-store";
 import { useChatStore } from "./store/chat-store";
 
-const API_URL = "http://localhost:3000";
+const API_URL = import.meta.env.VITE_API_URL ?? "https://localhost:3000";
 
 export function App() {
   const initialize = useChatStore((state) => state.initialize);

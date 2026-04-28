@@ -7,6 +7,7 @@ Local-first two-user realtime chat scaffold with a Telegram-like UI.
 - Frontend: React, Zustand, IndexedDB, shadcn-style UI structure
 - Backend: NestJS, Socket.IO, Prisma + PostgreSQL local backend
 - Local services: Docker Compose for PostgreSQL
+- Local TLS: Windows PowerShell script for a localhost dev certificate
 
 ## Project Layout
 
@@ -36,6 +37,12 @@ Start PostgreSQL locally:
 docker compose up -d
 ```
 
+Generate the local HTTPS certificate:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\create-dev-cert.ps1
+```
+
 Copy the API environment file:
 
 ```bash
@@ -52,6 +59,13 @@ Run frontend:
 
 ```bash
 npm run dev:web
+```
+
+Local URLs:
+
+```text
+API: https://localhost:3000
+Web: https://localhost:5173
 ```
 
 Prisma helpers:
