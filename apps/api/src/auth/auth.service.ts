@@ -69,6 +69,25 @@ export class AuthService {
     };
   }
 
+  async handleZmpLogin(accessToken: string): Promise<AuthenticatedSession> {
+    const profile = await this.zalo.fetchProfile(accessToken);
+    const user = await this.upsertUserFromProfile(profile);
+    const session = await this.createZmpSession(user.id, accessToken);
+
+    const appJwt = this.jwt.sign({ sub: user.id, jti: session.id });
+
+    return {
+      appJwt,
+      user: {
+        id: user.id,
+        name: user.name,
+        handle: user.handle,
+        avatarLabel: user.avatarLabel,
+        avatarUrl: user.avatarUrl,
+      },
+    };
+  }
+
   async refresh(expiredToken: string): Promise<{ appJwt: string }> {
     const payload = this.jwt.verifyAllowExpired(expiredToken);
     const session = await this.prisma.session.findUnique({ where: { id: payload.jti } });
@@ -158,6 +177,21 @@ export class AuthService {
         zaloAccessToken: this.encryption.encrypt(token.accessToken),
         zaloRefreshToken: this.encryption.encrypt(token.refreshToken),
         zaloExpiresAt: new Date(Date.now() + token.expiresInSeconds * 1000),
+      },
+    });
+  }
+
+  // ZMP-issued access tokens cannot be refreshed server-side (no refresh token
+  // is granted). Store an empty refresh token and set a far-future expiry so
+  // refreshZaloIfNeeded never triggers a doomed refresh call.
+  private async createZmpSession(userId: string, accessToken: string) {
+    return this.prisma.session.create({
+      data: {
+        id: randomUUID(),
+        userId,
+        zaloAccessToken: this.encryption.encrypt(accessToken),
+        zaloRefreshToken: this.encryption.encrypt(""),
+        zaloExpiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
       },
     });
   }

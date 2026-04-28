@@ -2,6 +2,7 @@ import { BadRequestException, Body, Controller, Get, Post, UseGuards } from "@ne
 import { AuthService } from "./auth.service";
 import { CurrentUser } from "./current-user.decorator";
 import { ZaloCallbackDto } from "./dto/zalo-callback.dto";
+import { ZmpLoginDto } from "./dto/zmp-login.dto";
 import { JwtAuthGuard, Public } from "./jwt-auth.guard";
 
 type CurrentUserPayload = { id: string; sessionId: string };
@@ -20,6 +21,12 @@ export class AuthController {
   @Post("zalo/callback")
   async handleCallback(@Body() body: ZaloCallbackDto) {
     return this.authService.handleCallback(body.code, body.codeVerifier);
+  }
+
+  @Public()
+  @Post("zalo/zmp")
+  async handleZmpLogin(@Body() body: ZmpLoginDto) {
+    return this.authService.handleZmpLogin(body.accessToken);
   }
 
   @Public()
