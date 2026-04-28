@@ -10,7 +10,12 @@ async function bootstrap() {
   const httpsPassphrase = process.env.HTTPS_PASSPHRASE ?? "zmp-local-dev";
 
   const app = await NestFactory.create(AppModule, {
-    cors: true,
+    cors: {
+      origin: true,
+      credentials: true,
+      methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+      allowedHeaders: ["Authorization", "Content-Type"],
+    },
     ...(httpsEnabled
       ? {
           httpsOptions: {

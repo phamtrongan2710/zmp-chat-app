@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "scripts": {
     "start:dev": "prisma generate && prisma db push && nest start --watch",
+    "start:prod": "prisma db push && node dist/main.js",
     "build": "prisma generate && nest build",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push"
