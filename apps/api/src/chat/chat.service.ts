@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { MessageStatus } from "@prisma/client";
 import { PrismaService } from "../database/prisma.service";
 import { CreateMessageDto } from "./dto/create-message.dto";
@@ -8,6 +8,7 @@ type User = {
   name: string;
   handle: string;
   avatarLabel: string;
+  avatarUrl: string | null;
   online: boolean;
 };
 
@@ -27,15 +28,6 @@ export class ChatService {
 
   constructor(private readonly prismaService: PrismaService) {}
 
-  async listUsers(): Promise<User[]> {
-    const rows = await this.prismaService.user.findMany({
-      orderBy: { name: "asc" },
-    });
-
-    return rows.map((row) => this.mapUser(row));
-  }
-
-  
   async getBootstrap(userId: string): Promise<{ self: User; chats: Chat[] }> {
     const selfRow = await this.prismaService.user.findUnique({
       where: { id: userId },
@@ -92,6 +84,28 @@ export class ChatService {
     });
 
     return rows.map((row) => this.mapMessage(row));
+  }
+
+  async listMessagesForUser(chatId: string, userId: string): Promise<Message[]> {
+    await this.assertParticipant(chatId, userId);
+    return this.listMessages(chatId);
+  }
+
+  async createMessageForUser(payload: CreateMessageDto, userId: string): Promise<Message> {
+    if (payload.senderId !== userId) {
+      throw new ForbiddenException("Cannot send messages as another user");
+    }
+    await this.assertParticipant(payload.chatId, userId);
+    return this.createMessage(payload);
+  }
+
+  async assertParticipant(chatId: string, userId: string): Promise<void> {
+    const participant = await this.prismaService.chatParticipant.findUnique({
+      where: { chatId_userId: { chatId, userId } },
+    });
+    if (!participant) {
+      throw new ForbiddenException("Not a participant of this chat");
+    }
   }
 
   async createMessage(payload: CreateMessageDto): Promise<Message> {
@@ -218,12 +232,19 @@ export class ChatService {
     return rows.some((row) => row.userId !== senderId && this.onlineUsers.has(row.userId));
   }
 
-  private mapUser(row: { id: string; name: string; handle: string; avatarLabel: string }): User {
+  private mapUser(row: {
+    id: string;
+    name: string;
+    handle: string;
+    avatarLabel: string;
+    avatarUrl: string | null;
+  }): User {
     return {
       id: row.id,
       name: row.name,
       handle: row.handle,
       avatarLabel: row.avatarLabel,
+      avatarUrl: row.avatarUrl,
       online: this.onlineUsers.has(row.id),
     };
   }

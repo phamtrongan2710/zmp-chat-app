@@ -1,28 +1,42 @@
 import { Body, Controller, Get, Param, Post } from "@nestjs/common";
-import { CreateMessageDto } from "./dto/create-message.dto";
+import { CurrentUser } from "../auth/current-user.decorator";
+import { AuthService } from "../auth/auth.service";
 import { ChatService } from "./chat.service";
+import { CreateMessageDto } from "./dto/create-message.dto";
 
-@Controller("chat")
+type CurrentUserPayload = { id: string; sessionId: string };
+
+@Controller()
 export class ChatController {
-  constructor(private readonly chatService: ChatService) {}
+  constructor(
+    private readonly chatService: ChatService,
+    private readonly authService: AuthService,
+  ) {}
 
-  @Get("users")
-  async listUsers() {
-    return this.chatService.listUsers();
+  @Get("me")
+  async me(@CurrentUser() user: CurrentUserPayload) {
+    const row = await this.authService.getUserById(user.id);
+    return {
+      id: row.id,
+      name: row.name,
+      handle: row.handle,
+      avatarLabel: row.avatarLabel,
+      avatarUrl: row.avatarUrl,
+    };
   }
 
-  @Get("bootstrap/:userId")
-  async bootstrap(@Param("userId") userId: string) {
-    return this.chatService.getBootstrap(userId);
+  @Get("chat/bootstrap")
+  async bootstrap(@CurrentUser() user: CurrentUserPayload) {
+    return this.chatService.getBootstrap(user.id);
   }
 
-  @Get(":chatId/messages")
-  async listMessages(@Param("chatId") chatId: string) {
-    return this.chatService.listMessages(chatId);
+  @Get("chat/:chatId/messages")
+  async listMessages(@Param("chatId") chatId: string, @CurrentUser() user: CurrentUserPayload) {
+    return this.chatService.listMessagesForUser(chatId, user.id);
   }
 
-  @Post("messages")
-  async createMessage(@Body() payload: CreateMessageDto) {
-    return this.chatService.createMessage(payload);
+  @Post("chat/messages")
+  async createMessage(@Body() payload: CreateMessageDto, @CurrentUser() user: CurrentUserPayload) {
+    return this.chatService.createMessageForUser(payload, user.id);
   }
 }
