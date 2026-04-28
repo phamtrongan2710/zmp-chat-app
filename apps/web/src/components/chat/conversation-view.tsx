@@ -29,6 +29,7 @@ export function ConversationView() {
 
           return (
             <div key={message.id} className={`message-row ${isSelf ? "self" : ""}`}>
+              {!isSelf ? <div className="message-avatar">{peer?.avatarLabel ?? "?"}</div> : null}
               <div className="message-bubble">
                 <div>{message.content}</div>
                 <div className="message-meta">
@@ -41,6 +42,7 @@ export function ConversationView() {
         })}
         {peerIsTyping ? (
           <div className="message-row">
+            <div className="message-avatar">{peer?.avatarLabel ?? "?"}</div>
             <div className="message-bubble typing-bubble" aria-label={`${peer?.name ?? "Peer"} is typing`}>
               <div className="typing-placeholder" aria-hidden="true">
                 <span className="typing-dot" />
