@@ -1,11 +1,5 @@
 import { apiRequest } from "./api-client";
 
-export type AuthorizeUrlResponse = {
-  url: string;
-  state: string;
-  codeVerifier: string;
-};
-
 export type AuthenticatedUser = {
   id: string;
   name: string;
@@ -19,16 +13,8 @@ export type AuthenticatedSession = {
   user: AuthenticatedUser;
 };
 
-export function fetchAuthorizeUrl(): Promise<AuthorizeUrlResponse> {
-  return apiRequest<AuthorizeUrlResponse>("/auth/zalo/url", { method: "GET", skipAuth: true });
-}
-
-export function postZaloCallback(payload: {
-  code: string;
-  state: string;
-  codeVerifier: string;
-}): Promise<AuthenticatedSession> {
-  return apiRequest<AuthenticatedSession>("/auth/zalo/callback", {
+export function postZmpLogin(payload: { accessToken: string }): Promise<AuthenticatedSession> {
+  return apiRequest<AuthenticatedSession>("/auth/zalo/zmp", {
     method: "POST",
     body: payload,
     skipAuth: true,

@@ -10,6 +10,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
+    base: "./",
     server: {
       port: 5173,
       https: existsSync(httpsPfxPath)

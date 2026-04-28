@@ -27,9 +27,13 @@ export function App() {
 
   useEffect(() => {
     setUnauthorizedHandler(() => {
-      if (window.location.pathname !== "/") {
-        window.location.assign("/");
-      }
+      useChatStore.setState({
+        selfUserId: null,
+        selfUser: null,
+        chats: [],
+        activeChatId: "",
+        isHydrated: true,
+      });
     });
     return () => setUnauthorizedHandler(null);
   }, []);
