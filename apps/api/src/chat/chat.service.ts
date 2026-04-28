@@ -1,5 +1,6 @@
-import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { MessageStatus } from "@prisma/client";
+import { randomUUID } from "node:crypto";
 import { PrismaService } from "../database/prisma.service";
 import { CreateMessageDto } from "./dto/create-message.dto";
 
@@ -75,6 +76,80 @@ export class ChatService {
     );
 
     return { self, chats: chatPayloads };
+  }
+
+  async createOrGetDirectChat(userId: string, peerUserId: string): Promise<{ chat: Chat; created: boolean }> {
+    if (userId === peerUserId) {
+      throw new BadRequestException("Cannot start a chat with yourself");
+    }
+
+    const peer = await this.prismaService.user.findUnique({ where: { id: peerUserId } });
+    if (!peer) {
+      throw new NotFoundException("Peer not found");
+    }
+
+    const existing = await this.prismaService.chat.findFirst({
+      where: {
+        AND: [
+          { participants: { some: { userId } } },
+          { participants: { some: { userId: peerUserId } } },
+        ],
+      },
+      include: {
+        participants: { include: { user: true }, orderBy: { userId: "asc" } },
+        messages: { orderBy: [{ createdAt: "asc" }, { id: "asc" }] },
+      },
+    });
+
+    if (existing && existing.participants.length === 2) {
+      return { chat: this.serializeChat(existing, userId), created: false };
+    }
+
+    const chatId = randomUUID();
+    const created = await this.prismaService.chat.create({
+      data: {
+        id: chatId,
+        participants: {
+          create: [{ userId }, { userId: peerUserId }],
+        },
+      },
+      include: {
+        participants: { include: { user: true }, orderBy: { userId: "asc" } },
+        messages: true,
+      },
+    });
+
+    return { chat: this.serializeChat(created, userId), created: true };
+  }
+
+  serializeChatForUser(
+    chat: {
+      id: string;
+      participants: Array<{ user: { id: string; name: string; handle: string; avatarLabel: string; avatarUrl: string | null } }>;
+      messages: Array<{ id: string; chatId: string; senderId: string; content: string; createdAt: Date; status: MessageStatus }>;
+    },
+    viewerUserId: string,
+  ): Chat {
+    return this.serializeChat(chat, viewerUserId);
+  }
+
+  private serializeChat(
+    chat: {
+      id: string;
+      participants: Array<{ user: { id: string; name: string; handle: string; avatarLabel: string; avatarUrl: string | null } }>;
+      messages: Array<{ id: string; chatId: string; senderId: string; content: string; createdAt: Date; status: MessageStatus }>;
+    },
+    viewerUserId: string,
+  ): Chat {
+    const participants = chat.participants.map((participant) => this.mapUser(participant.user));
+    const peer = participants.find((participant) => participant.id !== viewerUserId);
+
+    return {
+      id: chat.id,
+      title: peer?.name ?? "Direct message",
+      participants,
+      messages: chat.messages.map((message) => this.mapMessage(message)),
+    };
   }
 
   async listMessages(chatId: string): Promise<Message[]> {

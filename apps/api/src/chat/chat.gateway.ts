@@ -99,6 +99,28 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     return message;
   }
 
+  emitChatCreated(
+    creatorUserId: string,
+    peerUserId: string,
+    chat: { id: string; title: string; participants: unknown[]; messages: unknown[] },
+  ) {
+    this.server.to(`user:${creatorUserId}`).emit("chat.created", chat);
+    const peerView = {
+      ...chat,
+      title: this.titleForViewer(chat, peerUserId),
+    };
+    this.server.to(`user:${peerUserId}`).emit("chat.created", peerView);
+  }
+
+  private titleForViewer(
+    chat: { participants: unknown[] },
+    viewerUserId: string,
+  ): string {
+    const participants = chat.participants as Array<{ id: string; name: string }>;
+    const peer = participants.find((participant) => participant.id !== viewerUserId);
+    return peer?.name ?? "Direct message";
+  }
+
   @SubscribeMessage("typing.update")
   async handleTypingUpdate(@MessageBody() payload: TypingStateDto, @ConnectedSocket() socket: Socket) {
     const userId = this.requireUserId(socket);

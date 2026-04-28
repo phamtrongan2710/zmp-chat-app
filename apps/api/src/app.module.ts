@@ -6,9 +6,10 @@ import { JwtAuthGuard } from "./auth/jwt-auth.guard";
 import { ChatModule } from "./chat/chat.module";
 import { CryptoModule } from "./crypto/crypto.module";
 import { DatabaseModule } from "./database/database.module";
+import { UsersModule } from "./users/users.module";
 
 @Module({
-  imports: [ConfigModule.forRoot({ isGlobal: true }), DatabaseModule, CryptoModule, AuthModule, ChatModule],
+  imports: [ConfigModule.forRoot({ isGlobal: true }), DatabaseModule, CryptoModule, AuthModule, UsersModule, ChatModule],
   providers: [
     {
       provide: APP_GUARD,

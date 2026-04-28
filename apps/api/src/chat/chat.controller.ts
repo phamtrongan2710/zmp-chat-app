@@ -1,7 +1,9 @@
 import { Body, Controller, Get, Param, Post } from "@nestjs/common";
 import { CurrentUser } from "../auth/current-user.decorator";
 import { AuthService } from "../auth/auth.service";
+import { ChatGateway } from "./chat.gateway";
 import { ChatService } from "./chat.service";
+import { CreateChatDto } from "./dto/create-chat.dto";
 import { CreateMessageDto } from "./dto/create-message.dto";
 
 type CurrentUserPayload = { id: string; sessionId: string };
@@ -11,6 +13,7 @@ export class ChatController {
   constructor(
     private readonly chatService: ChatService,
     private readonly authService: AuthService,
+    private readonly chatGateway: ChatGateway,
   ) {}
 
   @Get("me")
@@ -28,6 +31,15 @@ export class ChatController {
   @Get("chat/bootstrap")
   async bootstrap(@CurrentUser() user: CurrentUserPayload) {
     return this.chatService.getBootstrap(user.id);
+  }
+
+  @Post("chats")
+  async createChat(@Body() body: CreateChatDto, @CurrentUser() user: CurrentUserPayload) {
+    const result = await this.chatService.createOrGetDirectChat(user.id, body.peerUserId);
+    if (result.created) {
+      this.chatGateway.emitChatCreated(user.id, body.peerUserId, result.chat);
+    }
+    return result.chat;
   }
 
   @Get("chat/:chatId/messages")
