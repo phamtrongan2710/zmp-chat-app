@@ -309,7 +309,7 @@ If a browser closes while still typing:
 
 - bootstrap fallback when API is unavailable
 
-## Flow 9: Database Bootstrap And Seed
+## Flow 9: Database Bootstrap
 
 ### Trigger
 
@@ -319,16 +319,10 @@ If a browser closes while still typing:
 
 1. `PrismaService` loads `DATABASE_URL`.
 2. Prisma client connects.
-3. Seed logic upserts:
-   - `user-me`
-   - `user-alex`
-   - `chat-alex`
-   - both chat participants
-   - one seed message
 
 ### Result
 
-- app has a stable local dataset on startup
+- empty database; users are created on demand by the Zalo OAuth callback
 
 ## Boundaries And Source Of Truth
 
