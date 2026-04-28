@@ -4,6 +4,8 @@ import { AuthScreen } from "./components/chat/auth-screen";
 import { ChatSidebar } from "./components/chat/chat-sidebar";
 import { ConversationView } from "./components/chat/conversation-view";
 import { Composer } from "./components/chat/composer";
+import { setUnauthorizedHandler } from "./lib/api-client";
+import { readAppJwt } from "./lib/auth-session";
 import type { Message } from "./store/chat-store";
 import { useChatStore } from "./store/chat-store";
 
@@ -23,6 +25,16 @@ export function App() {
   const isHydrated = useChatStore((state) => state.isHydrated);
 
   useEffect(() => {
+    setUnauthorizedHandler(() => {
+      if (window.location.pathname !== "/") {
+        window.location.assign("/");
+      }
+    });
+    return () => setUnauthorizedHandler(null);
+  }, []);
+
+  useEffect(() => {
+    if (!readAppJwt()) return;
     void initialize();
   }, [initialize]);
 
