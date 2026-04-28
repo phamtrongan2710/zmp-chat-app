@@ -9,9 +9,10 @@ type AvatarProps = {
 export function Avatar({ url, label, className }: AvatarProps) {
   const [errored, setErrored] = useState(false);
   const showImage = Boolean(url) && !errored;
+  const avatarClassName = className ? `avatar ${className}` : "avatar";
 
   return (
-    <div className={className ?? "avatar"}>
+    <div className={avatarClassName}>
       {showImage ? (
         <img
           src={url ?? ""}
