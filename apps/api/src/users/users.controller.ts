@@ -1,4 +1,4 @@
-import { BadRequestException, Controller, Get, Query } from "@nestjs/common";
+import { Controller, Get, Query } from "@nestjs/common";
 import { CurrentUser } from "../auth/current-user.decorator";
 import { UsersService } from "./users.service";
 
@@ -10,9 +10,6 @@ export class UsersController {
 
   @Get("search")
   async search(@Query("q") query: string | undefined, @CurrentUser() user: CurrentUserPayload) {
-    if (!query || query.trim().length === 0) {
-      throw new BadRequestException("q is required");
-    }
-    return this.usersService.search(query, user.id);
+    return this.usersService.search(query ?? "", user.id);
   }
 }

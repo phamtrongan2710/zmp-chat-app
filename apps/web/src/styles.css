@@ -300,6 +300,17 @@ ul {
   margin-top: 2px;
 }
 
+/* ------- Section label ------- */
+
+.section-label {
+  padding: 12px 16px 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 /* ------- Empty state ------- */
 
 .empty-state {

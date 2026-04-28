@@ -15,18 +15,22 @@ export class UsersService {
 
   async search(query: string, excludeUserId: string): Promise<SearchedUser[]> {
     const trimmed = query.trim();
+    const where = trimmed
+      ? {
+          AND: [
+            { id: { not: excludeUserId } },
+            {
+              OR: [
+                { name: { contains: trimmed, mode: "insensitive" as const } },
+                { handle: { contains: trimmed, mode: "insensitive" as const } },
+              ],
+            },
+          ],
+        }
+      : { id: { not: excludeUserId } };
+
     const rows = await this.prisma.user.findMany({
-      where: {
-        AND: [
-          { id: { not: excludeUserId } },
-          {
-            OR: [
-              { name: { contains: trimmed, mode: "insensitive" } },
-              { handle: { contains: trimmed, mode: "insensitive" } },
-            ],
-          },
-        ],
-      },
+      where,
       orderBy: { name: "asc" },
       take: 20,
     });
