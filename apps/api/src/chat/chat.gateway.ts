@@ -3,11 +3,12 @@ import {
   MessageBody,
   OnGatewayConnection,
   OnGatewayDisconnect,
+  OnGatewayInit,
   SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
 } from "@nestjs/websockets";
-import { Server, Socket } from "socket.io";
+import { Namespace, Server, Socket } from "socket.io";
 import { AppJwtService } from "../auth/jwt.service";
 import { PrismaService } from "../database/prisma.service";
 import { ChatService } from "./chat.service";
@@ -21,7 +22,7 @@ import { TypingStateDto } from "./dto/typing-state.dto";
     origin: "*",
   },
 })
-export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server!: Server;
 
@@ -31,32 +32,32 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly prisma: PrismaService,
   ) {}
 
-  async handleConnection(socket: Socket) {
-    const token = this.readToken(socket);
-    if (!token) {
-      socket.disconnect(true);
-      return;
-    }
+  // Authenticate during the handshake so that socket.data.userId is guaranteed
+  // to be set before any event handler (or handleConnection) runs. Doing this
+  // inside handleConnection races with client emits that arrive immediately
+  // after `connect`, surfacing as "Unauthenticated socket" on the first emit.
+  afterInit(namespace: Namespace) {
+    namespace.use(async (socket, next) => {
+      const token = this.readToken(socket);
+      if (!token) return next(new Error("Unauthenticated socket"));
 
-    let userId: string;
-    let sessionId: string;
-    try {
-      const payload = this.jwtService.verify(token);
-      userId = payload.sub;
-      sessionId = payload.jti;
-    } catch {
-      socket.disconnect(true);
-      return;
-    }
+      try {
+        const payload = this.jwtService.verify(token);
+        const session = await this.prisma.session.findUnique({ where: { id: payload.jti } });
+        if (!session || session.revokedAt) {
+          return next(new Error("Unauthenticated socket"));
+        }
+        socket.data.userId = payload.sub;
+        socket.data.sessionId = payload.jti;
+        next();
+      } catch {
+        next(new Error("Unauthenticated socket"));
+      }
+    });
+  }
 
-    const session = await this.prisma.session.findUnique({ where: { id: sessionId } });
-    if (!session || session.revokedAt) {
-      socket.disconnect(true);
-      return;
-    }
-
-    socket.data.userId = userId;
-    socket.data.sessionId = sessionId;
+  handleConnection(socket: Socket) {
+    const userId = socket.data.userId as string;
     socket.join(`user:${userId}`);
 
     const becameOnline = this.chatService.markUserOnline(userId, true);
