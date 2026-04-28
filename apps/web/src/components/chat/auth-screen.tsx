@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { getUserID, getUserInfo } from "zmp-sdk";
+import { authorize, getUserID, getUserInfo } from "zmp-sdk";
 import { postZmpLogin } from "../../lib/auth-api";
 import { writeAppJwt } from "../../lib/auth-session";
 import { useChatStore } from "../../store/chat-store";
@@ -19,11 +19,12 @@ export function AuthScreen() {
       let name = `User ${zaloId.slice(-6)}`;
       let avatar: string | null = null;
       try {
+        await authorize({ scopes: ["scope.userInfo"] });
         const { userInfo } = await getUserInfo({ avatarType: "normal" });
         if (userInfo?.name) name = userInfo.name;
         if (userInfo?.avatar) avatar = userInfo.avatar;
-      } catch {
-        // user denied scope.userInfo — log them in with a placeholder name
+      } catch (cause) {
+        console.warn("[auth] could not load Zalo profile, signing in with placeholder", cause);
       }
 
       const session = await postZmpLogin({ zaloId, name, avatar });

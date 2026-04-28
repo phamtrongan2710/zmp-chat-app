@@ -1,6 +1,7 @@
-import { Body, Controller, Get, Param, Post, Query } from "@nestjs/common";
+import { Body, Controller, Get, Param, Patch, Post, Query } from "@nestjs/common";
 import { CurrentUser } from "../auth/current-user.decorator";
 import { AuthService } from "../auth/auth.service";
+import { UpdateProfileDto } from "../auth/dto/update-profile.dto";
 import { ChatGateway } from "./chat.gateway";
 import { ChatService } from "./chat.service";
 import { CreateChatDto } from "./dto/create-chat.dto";
@@ -20,6 +21,18 @@ export class ChatController {
   @Get("me")
   async me(@CurrentUser() user: CurrentUserPayload) {
     const row = await this.authService.getUserById(user.id);
+    return {
+      id: row.id,
+      name: row.name,
+      handle: row.handle,
+      avatarLabel: row.avatarLabel,
+      avatarUrl: row.avatarUrl,
+    };
+  }
+
+  @Patch("me")
+  async updateMe(@Body() body: UpdateProfileDto, @CurrentUser() user: CurrentUserPayload) {
+    const row = await this.authService.updateProfile(user.id, body);
     return {
       id: row.id,
       name: row.name,

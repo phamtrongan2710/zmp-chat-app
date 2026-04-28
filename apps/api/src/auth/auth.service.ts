@@ -141,6 +141,18 @@ export class AuthService {
     return user;
   }
 
+  async updateProfile(userId: string, patch: { name?: string; avatar?: string | null }) {
+    const data: { name?: string; avatarUrl?: string | null; avatarLabel?: string } = {};
+    if (patch.name !== undefined) {
+      data.name = patch.name;
+      data.avatarLabel = deriveAvatarLabel(patch.name);
+    }
+    if (patch.avatar !== undefined) {
+      data.avatarUrl = patch.avatar;
+    }
+    return this.prisma.user.update({ where: { id: userId }, data });
+  }
+
   private async upsertUserFromProfile(profile: ZaloProfile) {
     const existing = await this.prisma.user.findUnique({ where: { zaloId: profile.id } });
     if (existing) {

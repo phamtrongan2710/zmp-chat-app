@@ -32,3 +32,7 @@ export function postLogout(): Promise<{ ok: boolean }> {
 export function fetchMe(): Promise<AuthenticatedUser> {
   return apiRequest<AuthenticatedUser>("/me", { method: "GET" });
 }
+
+export function patchMe(payload: { name?: string; avatar?: string | null }): Promise<AuthenticatedUser> {
+  return apiRequest<AuthenticatedUser>("/me", { method: "PATCH", body: payload });
+}

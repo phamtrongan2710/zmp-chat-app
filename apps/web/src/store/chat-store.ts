@@ -1,8 +1,9 @@
 import { create } from "zustand";
 import { Socket } from "socket.io-client";
+import { authorize, getUserInfo } from "zmp-sdk";
 import { apiRequest } from "../lib/api-client";
 import type { AuthenticatedUser } from "../lib/auth-api";
-import { fetchMe, postLogout } from "../lib/auth-api";
+import { fetchMe, patchMe, postLogout } from "../lib/auth-api";
 import { readAppJwt, writeAppJwt } from "../lib/auth-session";
 import { readConversationCache, writeConversationCache } from "../lib/indexeddb";
 
@@ -57,6 +58,7 @@ type ChatState = {
   setSocket: (socket: Socket | null) => void;
   disconnectRealtime: () => void;
   signOut: () => Promise<void>;
+  refreshProfileFromZalo: () => Promise<void>;
   sendMessage: (content: string) => Promise<void>;
   receiveMessage: (message: Message) => Promise<void>;
   acceptIncomingChat: (chat: Chat) => void;
@@ -176,6 +178,15 @@ export const useChatStore = create<ChatState>((set, get) => ({
       typingByChat: {},
       isHydrated: true,
     });
+  },
+  refreshProfileFromZalo: async () => {
+    await authorize({ scopes: ["scope.userInfo"] });
+    const { userInfo } = await getUserInfo({ avatarType: "normal" });
+    if (!userInfo?.name) {
+      throw new Error("Zalo did not return a profile");
+    }
+    const updated = await patchMe({ name: userInfo.name, avatar: userInfo.avatar ?? null });
+    set({ selfUser: asUser(updated, true) });
   },
   sendMessage: async (content: string) => {
     const activeChat = get().chats.find((chat) => chat.id === get().activeChatId);

@@ -597,22 +597,42 @@ ul {
   font-weight: 500;
 }
 
-.profile-signout {
+.profile-action {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  margin: 24px 16px 16px;
+  margin: 12px 16px;
   padding: 14px;
   border-radius: 14px;
   background: var(--color-surface);
-  color: #d63b4f;
+  color: var(--color-primary);
   font-weight: 700;
   border: 1px solid var(--color-border);
 }
 
-.profile-signout:active {
+.profile-action:active {
+  background: var(--color-primary-soft);
+}
+
+.profile-action:disabled {
+  opacity: 0.6;
+}
+
+.profile-action.danger {
+  color: #d63b4f;
+}
+
+.profile-action.danger:active {
   background: rgba(214, 59, 79, 0.05);
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 /* ------- Bottom nav ------- */
