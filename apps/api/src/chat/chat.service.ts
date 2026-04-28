@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, NotFoundException } from "@nestjs/common";
 import { MessageStatus } from "@prisma/client";
 import { PrismaService } from "../database/prisma.service";
 import { CreateMessageDto } from "./dto/create-message.dto";
@@ -35,9 +35,17 @@ export class ChatService {
     return rows.map((row) => this.mapUser(row));
   }
 
+  
   async getBootstrap(userId: string): Promise<{ self: User; chats: Chat[] }> {
-    const users = await this.listUsers();
-    const self = users.find((user) => user.id === userId) ?? users[0];
+    const selfRow = await this.prismaService.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!selfRow) {
+      throw new NotFoundException(`User ${userId} not found`);
+    }
+
+    const self = this.mapUser(selfRow);
     const chatRows = await this.prismaService.chat.findMany({
       where: {
         participants: {
@@ -112,6 +120,27 @@ export class ChatService {
     return nextMessage;
   }
 
+  /**
+   * Marks a user as online or offline and tracks their connection count.
+   * 
+   * This function maintains a reference count for each user to handle multiple concurrent connections.
+   * When a user goes online, their connection count increases; when they go offline, it decreases.
+   * 
+   * @param userId - The unique identifier of the user
+   * @param online - Boolean flag indicating whether the user is coming online (true) or going offline (false)
+   * 
+   * @returns Boolean indicating a status change:
+   *          - If online=true: returns true if this is the user's first connection (count went from 0 to 1)
+   *          - If online=false: returns true if the user had active connections before (count was > 0), false otherwise
+   *          - Returns false if going offline but not the last connection (count > 1)
+   * 
+   * @description
+   * Step by step:
+   * 1. If marking online: increment the connection count for the user and return true only if it's their first connection
+   * 2. If marking offline: check the current connection count
+   * 3. If count is 1 or less, delete the user from the online map and return true if they had an active connection
+   * 4. If count is greater than 1, decrement the count and return false (user still has other active connections)
+   */
   markUserOnline(userId: string, online: boolean): boolean {
     if (online) {
       const nextCount = (this.onlineUsers.get(userId) ?? 0) + 1;
