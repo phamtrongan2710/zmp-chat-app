@@ -11,6 +11,6 @@
     "hideIOSSafeAreaBottom": false
   },
   "listCSS": [],
-  "listSyncJS": [],
+  "listSyncJS": ["assets/index.js"],
   "listAsyncJS": []
 }

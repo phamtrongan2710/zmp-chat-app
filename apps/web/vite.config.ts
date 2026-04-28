@@ -1,7 +1,20 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { defineConfig, loadEnv } from "vite";
+import { defineConfig, loadEnv, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
+
+const stripInjectedAssets = (): Plugin => ({
+  name: "strip-injected-assets",
+  apply: "build",
+  transformIndexHtml: {
+    order: "post",
+    handler(html) {
+      return html
+        .replace(/\s*<script\b[^>]*\bsrc=[^>]*><\/script>/g, "")
+        .replace(/\s*<link\b[^>]*\brel=["']stylesheet["'][^>]*>/g, "");
+    },
+  },
+});
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
@@ -9,8 +22,19 @@ export default defineConfig(({ mode }) => {
   const httpsPassphrase = env.VITE_DEV_PFX_PASSPHRASE ?? "zmp-local-dev";
 
   return {
-    plugins: [react()],
+    plugins: [react(), stripInjectedAssets()],
     base: "./",
+    build: {
+      modulePreload: false,
+      rollupOptions: {
+        output: {
+          format: "iife",
+          inlineDynamicImports: true,
+          entryFileNames: "assets/[name].js",
+          assetFileNames: "assets/[name].[ext]",
+        },
+      },
+    },
     server: {
       port: 5173,
       https: existsSync(httpsPfxPath)
