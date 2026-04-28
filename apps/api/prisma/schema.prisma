@@ -13,14 +13,31 @@ enum MessageStatus {
 }
 
 model User {
-  id             String            @id
-  name           String
-  handle         String            @unique
-  avatarLabel    String            @map("avatar_label")
+  id               String            @id
+  zaloId           String?           @unique @map("zalo_id")
+  name             String
+  handle           String            @unique
+  avatarLabel      String            @map("avatar_label")
+  avatarUrl        String?           @map("avatar_url")
   chatParticipants ChatParticipant[]
-  sentMessages   Message[]         @relation("MessageSender")
+  sentMessages     Message[]         @relation("MessageSender")
+  sessions         Session[]
 
   @@map("users")
+}
+
+model Session {
+  id               String    @id
+  userId           String    @map("user_id")
+  zaloAccessToken  String    @map("zalo_access_token")
+  zaloRefreshToken String    @map("zalo_refresh_token")
+  zaloExpiresAt    DateTime  @map("zalo_expires_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  revokedAt        DateTime? @map("revoked_at")
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
 }
 
 model Chat {
