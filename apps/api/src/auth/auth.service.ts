@@ -69,10 +69,18 @@ export class AuthService {
     };
   }
 
-  async handleZmpLogin(accessToken: string): Promise<AuthenticatedSession> {
-    const profile = await this.zalo.fetchProfile(accessToken);
+  async handleZmpLogin(input: { zaloId: string; name: string; avatar?: string | null }): Promise<AuthenticatedSession> {
+    // graph.zalo.me/me is geo-blocked outside Vietnam, so we trust the Zalo
+    // identity supplied by the mini-app SDK (getUserID + getUserInfo). The Zalo
+    // ID is the only thing keyed on; cosmetic fields can be re-supplied on the
+    // next login.
+    const profile: ZaloProfile = {
+      id: input.zaloId,
+      name: input.name,
+      avatarUrl: input.avatar ?? null,
+    };
     const user = await this.upsertUserFromProfile(profile);
-    const session = await this.createZmpSession(user.id, accessToken);
+    const session = await this.createZmpSession(user.id, "");
 
     const appJwt = this.jwt.sign({ sub: user.id, jti: session.id });
 

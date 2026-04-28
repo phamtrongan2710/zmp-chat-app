@@ -13,7 +13,11 @@ export type AuthenticatedSession = {
   user: AuthenticatedUser;
 };
 
-export function postZmpLogin(payload: { accessToken: string }): Promise<AuthenticatedSession> {
+export function postZmpLogin(payload: {
+  zaloId: string;
+  name: string;
+  avatar?: string | null;
+}): Promise<AuthenticatedSession> {
   return apiRequest<AuthenticatedSession>("/auth/zalo/zmp", {
     method: "POST",
     body: payload,

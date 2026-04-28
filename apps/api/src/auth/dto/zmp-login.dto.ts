@@ -1,7 +1,15 @@
-import { IsString, MinLength } from "class-validator";
+import { IsOptional, IsString, MinLength } from "class-validator";
 
 export class ZmpLoginDto {
   @IsString()
   @MinLength(1)
-  accessToken!: string;
+  zaloId!: string;
+
+  @IsString()
+  @MinLength(1)
+  name!: string;
+
+  @IsOptional()
+  @IsString()
+  avatar?: string | null;
 }

@@ -26,7 +26,7 @@ export class AuthController {
   @Public()
   @Post("zalo/zmp")
   async handleZmpLogin(@Body() body: ZmpLoginDto) {
-    return this.authService.handleZmpLogin(body.accessToken);
+    return this.authService.handleZmpLogin(body);
   }
 
   @Public()

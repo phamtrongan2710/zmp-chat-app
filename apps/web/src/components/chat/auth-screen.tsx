@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { getAccessToken } from "zmp-sdk";
+import { getUserID, getUserInfo } from "zmp-sdk";
 import { postZmpLogin } from "../../lib/auth-api";
 import { writeAppJwt } from "../../lib/auth-session";
 import { useChatStore } from "../../store/chat-store";
@@ -13,11 +13,20 @@ export function AuthScreen() {
     setPending(true);
     setError(null);
     try {
-      const accessToken = await getAccessToken({});
-      if (!accessToken) {
-        throw new Error("Zalo did not return an access token");
+      const zaloId = await getUserID({});
+      if (!zaloId) throw new Error("Could not read Zalo user ID");
+
+      let name = `User ${zaloId.slice(-6)}`;
+      let avatar: string | null = null;
+      try {
+        const { userInfo } = await getUserInfo({ avatarType: "normal" });
+        if (userInfo?.name) name = userInfo.name;
+        if (userInfo?.avatar) avatar = userInfo.avatar;
+      } catch {
+        // user denied scope.userInfo — log them in with a placeholder name
       }
-      const session = await postZmpLogin({ accessToken });
+
+      const session = await postZmpLogin({ zaloId, name, avatar });
       writeAppJwt(session.appJwt);
       await initialize();
     } catch (cause) {
