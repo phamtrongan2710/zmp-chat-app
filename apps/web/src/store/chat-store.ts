@@ -205,7 +205,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     };
 
     const nextChat = { ...activeChat, messages: [...activeChat.messages, message] };
-    const nextChats = get().chats.map((chat) => (chat.id === nextChat.id ? nextChat : chat));
+    const nextChats = [nextChat, ...get().chats.filter((chat) => chat.id !== nextChat.id)];
     set({ chats: nextChats });
 
     await writeConversationCache({
@@ -223,11 +223,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
       return;
     }
 
-    const nextMessages = activeChat.messages.some((item) => item.id === message.id)
+    const isStatusUpdate = activeChat.messages.some((item) => item.id === message.id);
+    const nextMessages = isStatusUpdate
       ? activeChat.messages.map((item) => (item.id === message.id ? { ...item, status: message.status } : item))
       : [...activeChat.messages, message];
     const nextChat = { ...activeChat, messages: nextMessages };
-    const nextChats = get().chats.map((chat) => (chat.id === nextChat.id ? nextChat : chat));
+    const nextChats = isStatusUpdate
+      ? get().chats.map((chat) => (chat.id === nextChat.id ? nextChat : chat))
+      : [nextChat, ...get().chats.filter((chat) => chat.id !== nextChat.id)];
     set({ chats: nextChats });
 
     await writeConversationCache({
