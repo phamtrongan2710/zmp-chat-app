@@ -78,7 +78,7 @@ export function ConversationView() {
   }, [oldestMessageId, newestMessageId, peerIsTyping]);
 
   // Reset anchor and snap to bottom when switching chats.
-  useEffect(() => {
+  useLayoutEffect(() => {
     scrollAnchorRef.current = null;
     const container = messagesRef.current;
     if (container) {
