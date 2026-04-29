@@ -86,6 +86,18 @@ export function ConversationView() {
     }
   }, [activeChatId]);
 
+  // Scroll to bottom when the virtual keyboard resizes the visual viewport.
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const scrollToBottom = () => {
+      const container = messagesRef.current;
+      if (container) container.scrollTop = container.scrollHeight;
+    };
+    vv.addEventListener("resize", scrollToBottom);
+    return () => vv.removeEventListener("resize", scrollToBottom);
+  }, []);
+
   useEffect(() => {
     const sentinel = sentinelRef.current;
     const container = messagesRef.current;
