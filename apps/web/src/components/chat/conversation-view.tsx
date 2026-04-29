@@ -13,6 +13,7 @@ export function ConversationView() {
   const loadOlderMessages = useChatStore((state) => state.loadOlderMessages);
 
   const messagesRef = useRef<HTMLElement | null>(null);
+  const bottomRef = useRef<HTMLDivElement | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const oldestMessageIdRef = useRef<string | null>(null);
   const newestMessageIdRef = useRef<string | null>(null);
@@ -68,7 +69,7 @@ export function ConversationView() {
       const newestChanged = newestMessageIdRef.current !== newestMessageId;
       const typingChanged = peerIsTypingRef.current !== peerIsTyping;
       if (newestChanged || typingChanged) {
-        container.scrollTop = container.scrollHeight;
+        bottomRef.current?.scrollIntoView();
       }
     }
 
@@ -80,10 +81,7 @@ export function ConversationView() {
   // Reset anchor and snap to bottom when switching chats.
   useLayoutEffect(() => {
     scrollAnchorRef.current = null;
-    const container = messagesRef.current;
-    if (container) {
-      container.scrollTop = container.scrollHeight;
-    }
+    bottomRef.current?.scrollIntoView();
   }, [activeChatId]);
 
   // Scroll to bottom when the virtual keyboard resizes the visual viewport.
@@ -91,8 +89,7 @@ export function ConversationView() {
     const vv = window.visualViewport;
     if (!vv) return;
     const scrollToBottom = () => {
-      const container = messagesRef.current;
-      if (container) container.scrollTop = container.scrollHeight;
+      bottomRef.current?.scrollIntoView();
     };
     vv.addEventListener("resize", scrollToBottom);
     return () => vv.removeEventListener("resize", scrollToBottom);
@@ -155,6 +152,7 @@ export function ConversationView() {
             </div>
           </div>
         ) : null}
+        <div ref={bottomRef} aria-hidden="true" />
       </section>
     </>
   );
