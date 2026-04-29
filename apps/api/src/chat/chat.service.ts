@@ -28,7 +28,7 @@ type MessagePage = {
   hasMore: boolean;
 };
 
-const MESSAGE_PAGE_SIZE = 10;
+const MESSAGE_PAGE_SIZE = 30;
 
 @Injectable()
 export class ChatService {
