@@ -502,6 +502,10 @@ ul {
   gap: 8px;
 }
 
+.message-row.interactive {
+  cursor: pointer;
+}
+
 .message-row.self {
   justify-content: flex-end;
 }
@@ -522,6 +526,10 @@ ul {
   color: var(--color-bubble-self-text);
   border-radius: 14px 14px 4px 14px;
   border: 0;
+}
+
+.message-row.selected .message-bubble {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 22%, transparent);
 }
 
 .typing-bubble {

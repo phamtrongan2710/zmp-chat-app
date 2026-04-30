@@ -1,6 +1,7 @@
-import { useEffect, useLayoutEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useChatStore } from "../../store/chat-store";
 import { Avatar } from "./avatar";
+import { MessageItem } from "./message-item";
 
 export function ConversationView() {
   const selfUserId = useChatStore((state) => state.selfUserId);
@@ -12,6 +13,7 @@ export function ConversationView() {
   );
   const loadOlderMessages = useChatStore((state) => state.loadOlderMessages);
 
+  const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
   const messagesRef = useRef<HTMLElement | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
@@ -87,6 +89,7 @@ export function ConversationView() {
   // Reset anchor and snap to bottom when switching chats.
   useLayoutEffect(() => {
     scrollAnchorRef.current = null;
+    setSelectedMessageId(null);
     scrollMessagesToBottom();
   }, [activeChatId]);
 
@@ -125,25 +128,23 @@ export function ConversationView() {
 
   return (
     <>
-      <section className="messages" ref={messagesRef}>
+      <section className="messages" ref={messagesRef} onClick={() => setSelectedMessageId(null)}>
         {chat.hasMore ? <div ref={sentinelRef} className="messages-sentinel" aria-hidden="true" /> : null}
         {isLoadingOlder ? <div className="messages-loading muted">Loading older messages...</div> : null}
-        {chat.messages.map((message) => {
-          const isSelf = message.senderId === selfUserId;
-
-          return (
-            <div key={message.id} data-message-id={message.id} className={`message-row ${isSelf ? "self" : ""}`}>
-              {!isSelf ? <Avatar url={peer?.avatarUrl ?? null} label={peer?.avatarLabel ?? "?"} className="message-avatar" /> : null}
-              <div className="message-bubble">
-                <div>{message.content}</div>
-                <div className="message-meta">
-                  {new Date(message.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                  {isSelf ? ` • ${message.status}` : ""}
-                </div>
-              </div>
-            </div>
-          );
-        })}
+        {chat.messages.map((message) => (
+          <MessageItem
+            key={message.id}
+            message={message}
+            isSelf={message.senderId === selfUserId}
+            isSelected={selectedMessageId === message.id}
+            peer={peer}
+            onSelect={(messageId) =>
+              setSelectedMessageId((currentMessageId) =>
+                currentMessageId === messageId ? null : messageId,
+              )
+            }
+          />
+        ))}
         {peerIsTyping ? (
           <div className="message-row">
             <Avatar url={peer?.avatarUrl ?? null} label={peer?.avatarLabel ?? "?"} className="message-avatar" />
