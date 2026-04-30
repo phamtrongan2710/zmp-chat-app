@@ -304,6 +304,16 @@ ul {
   margin-top: 2px;
 }
 
+.chat-list-sentinel {
+  height: 1px;
+}
+
+.chat-list-loading {
+  padding: 8px 16px 20px;
+  text-align: center;
+  font-size: 12px;
+}
+
 /* ------- Section label ------- */
 
 .section-label {

@@ -1,5 +1,5 @@
 import { Plus, Search } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Avatar } from "../components/chat/avatar";
 import { useChatStore } from "../store/chat-store";
@@ -9,14 +9,36 @@ const FILTERS = ["All", "Unread", "Direct", "Groups"] as const;
 export function ChatListScreen() {
   const chats = useChatStore((state) => state.chats);
   const selfUser = useChatStore((state) => state.selfUser);
+  const hasMoreChats = useChatStore((state) => state.hasMoreChats);
+  const isLoadingMoreChats = useChatStore((state) => state.isLoadingMoreChats);
+  const loadMoreChats = useChatStore((state) => state.loadMoreChats);
   const navigate = useNavigate();
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>("All");
   const [query, setQuery] = useState("");
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   const trimmedQuery = query.trim().toLowerCase();
+  const canAutoLoadMore = filter === "All" && trimmedQuery.length === 0;
   const visibleChats = trimmedQuery
     ? chats.filter((chat) => chat.title.toLowerCase().includes(trimmedQuery))
     : chats;
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel || !hasMoreChats || !canAutoLoadMore) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          void loadMoreChats();
+        }
+      },
+      { rootMargin: "0px 0px 240px 0px" },
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [canAutoLoadMore, hasMoreChats, loadMoreChats, visibleChats.length]);
 
   return (
     <section className="screen">
@@ -97,6 +119,8 @@ export function ChatListScreen() {
               </li>
             );
           })}
+          {canAutoLoadMore && hasMoreChats ? <li><div ref={sentinelRef} className="chat-list-sentinel" aria-hidden="true" /></li> : null}
+          {canAutoLoadMore && isLoadingMoreChats ? <li className="chat-list-loading muted">Loading more chats...</li> : null}
         </ul>
       )}
     </section>

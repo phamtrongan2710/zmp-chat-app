@@ -28,6 +28,18 @@ type MessagePage = {
   hasMore: boolean;
 };
 
+type ChatPage = {
+  chats: Chat[];
+  hasMore: boolean;
+  nextCursor: string | null;
+};
+
+type ChatCursor = {
+  id: string;
+  lastMessageAt: string | null;
+};
+
+const CHAT_BOOTSTRAP_PAGE_SIZE = 15;
 const MESSAGE_PAGE_SIZE = 30;
 
 @Injectable()
@@ -37,7 +49,7 @@ export class ChatService {
 
   constructor(private readonly prismaService: PrismaService) {}
 
-  async getBootstrap(userId: string): Promise<{ self: User; chats: Chat[] }> {
+  async getBootstrap(userId: string): Promise<{ self: User; chats: Chat[]; hasMoreChats: boolean; nextChatsCursor: string | null }> {
     const selfRow = await this.prismaService.user.findUnique({
       where: { id: userId },
     });
@@ -47,15 +59,37 @@ export class ChatService {
     }
 
     const self = this.mapUser(selfRow);
-    const chatRows = await this.prismaService.chat.findMany({
+    const page = await this.listChatsPageForUser(self.id, { limit: CHAT_BOOTSTRAP_PAGE_SIZE });
+
+    return {
+      self,
+      chats: page.chats,
+      hasMoreChats: page.hasMore,
+      nextChatsCursor: page.nextCursor,
+    };
+  }
+
+  async listChatsPageForUser(
+    userId: string,
+    options: { cursor?: string; limit?: number } = {},
+  ): Promise<ChatPage> {
+    const limit = options.limit ?? CHAT_BOOTSTRAP_PAGE_SIZE;
+    const cursor = this.parseChatCursor(options.cursor);
+
+    const rows = await this.prismaService.chat.findMany({
       where: {
         participants: {
           some: {
-            userId: self.id,
+            userId,
           },
         },
+        ...this.buildChatCursorWhere(cursor),
       },
-      orderBy: { id: "asc" },
+      orderBy: [
+        { lastMessageAt: { sort: "desc", nulls: "last" } },
+        { id: "desc" },
+      ],
+      take: limit + 1,
       include: {
         participants: {
           include: {
@@ -70,26 +104,16 @@ export class ChatService {
       },
     });
 
-    const chatPayloads = chatRows.map((chat) => {
-      const participants = chat.participants.map((participant) => this.mapUser(participant.user));
-      const peer = participants.find((participant) => participant.id !== self.id);
+    const hasMore = rows.length > limit;
+    const pageRows = hasMore ? rows.slice(0, limit) : rows;
+    const chats = pageRows.map((chat) => this.serializeChat(chat, userId));
+    const tail = pageRows.at(-1);
 
-      const hasMore = chat.messages.length > MESSAGE_PAGE_SIZE;
-      const pageRows = hasMore ? chat.messages.slice(0, MESSAGE_PAGE_SIZE) : chat.messages;
-      const messages = pageRows
-        .map((message) => this.mapMessage(message))
-        .reverse();
-
-      return {
-        id: chat.id,
-        title: peer?.name ?? "Direct message",
-        participants,
-        messages,
-        hasMore,
-      };
-    });
-
-    return { self, chats: chatPayloads };
+    return {
+      chats,
+      hasMore,
+      nextCursor: hasMore && tail ? this.formatChatCursor(tail.id, tail.lastMessageAt) : null,
+    };
   }
 
   async createOrGetDirectChat(userId: string, peerUserId: string): Promise<{ chat: Chat; created: boolean }> {
@@ -137,17 +161,6 @@ export class ChatService {
     });
 
     return { chat: this.serializeChat(created, userId), created: true };
-  }
-
-  serializeChatForUser(
-    chat: {
-      id: string;
-      participants: Array<{ user: { id: string; name: string; handle: string; avatarLabel: string; avatarUrl: string | null } }>;
-      messages: Array<{ id: string; chatId: string; senderId: string; content: string; createdAt: Date; status: MessageStatus }>;
-    },
-    viewerUserId: string,
-  ): Chat {
-    return this.serializeChat(chat, viewerUserId);
   }
 
   private serializeChat(
@@ -259,6 +272,17 @@ export class ChatService {
         createdAt: new Date(nextMessage.createdAt),
         status: nextMessage.status as MessageStatus,
       },
+    });
+
+    await this.prismaService.chat.updateMany({
+      where: {
+        id: nextMessage.chatId,
+        OR: [
+          { lastMessageAt: null },
+          { lastMessageAt: { lt: new Date(nextMessage.createdAt) } },
+        ],
+      },
+      data: { lastMessageAt: new Date(nextMessage.createdAt) },
     });
 
     return nextMessage;
@@ -381,6 +405,59 @@ export class ChatService {
 
   listOnlineUserIds(): string[] {
     return Array.from(this.onlineUsers.keys());
+  }
+
+  private buildChatCursorWhere(cursor: ChatCursor | null) {
+    if (!cursor) {
+      return {};
+    }
+
+    if (!cursor.lastMessageAt) {
+      return {
+        lastMessageAt: null,
+        id: { lt: cursor.id },
+      };
+    }
+
+    const cursorDate = new Date(cursor.lastMessageAt);
+    return {
+      OR: [
+        { lastMessageAt: { lt: cursorDate } },
+        { lastMessageAt: cursorDate, id: { lt: cursor.id } },
+        { lastMessageAt: null },
+      ],
+    };
+  }
+
+  private parseChatCursor(rawCursor?: string): ChatCursor | null {
+    if (!rawCursor) {
+      return null;
+    }
+
+    try {
+      const decoded = Buffer.from(rawCursor, "base64url").toString("utf8");
+      const parsed = JSON.parse(decoded) as Partial<ChatCursor>;
+      const lastMessageAt = parsed.lastMessageAt ?? null;
+      if (typeof parsed.id !== "string") {
+        throw new Error("Missing chat id");
+      }
+      if (lastMessageAt !== null && Number.isNaN(Date.parse(lastMessageAt))) {
+        throw new Error("Invalid lastMessageAt");
+      }
+      return { id: parsed.id, lastMessageAt };
+    } catch {
+      throw new BadRequestException("Invalid chat pagination cursor");
+    }
+  }
+
+  private formatChatCursor(id: string, lastMessageAt: Date | null): string {
+    return Buffer.from(
+      JSON.stringify({
+        id,
+        lastMessageAt: lastMessageAt?.toISOString() ?? null,
+      }),
+      "utf8",
+    ).toString("base64url");
   }
 
   private mapMessage(row: {

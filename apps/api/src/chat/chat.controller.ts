@@ -5,6 +5,7 @@ import { UpdateProfileDto } from "../auth/dto/update-profile.dto";
 import { ChatGateway } from "./chat.gateway";
 import { ChatService } from "./chat.service";
 import { CreateChatDto } from "./dto/create-chat.dto";
+import { ListChatsQueryDto } from "./dto/list-chats-query.dto";
 import { CreateMessageDto } from "./dto/create-message.dto";
 import { ListMessagesQueryDto } from "./dto/list-messages-query.dto";
 
@@ -45,6 +46,14 @@ export class ChatController {
   @Get("chat/bootstrap")
   async bootstrap(@CurrentUser() user: CurrentUserPayload) {
     return this.chatService.getBootstrap(user.id);
+  }
+
+  @Get("chats")
+  async listChats(@Query() query: ListChatsQueryDto, @CurrentUser() user: CurrentUserPayload) {
+    return this.chatService.listChatsPageForUser(user.id, {
+      cursor: query.cursor,
+      limit: query.limit,
+    });
   }
 
   @Post("chats")

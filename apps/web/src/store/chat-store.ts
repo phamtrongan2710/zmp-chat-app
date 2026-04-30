@@ -36,6 +36,8 @@ export type Chat = {
 type BootstrapPayload = {
   self: User;
   chats: Chat[];
+  hasMoreChats: boolean;
+  nextChatsCursor: string | null;
 };
 
 type MessagePagePayload = {
@@ -43,17 +45,27 @@ type MessagePagePayload = {
   hasMore: boolean;
 };
 
+type ChatPagePayload = {
+  chats: Chat[];
+  hasMore: boolean;
+  nextCursor: string | null;
+};
+
 type ChatState = {
   selfUserId: string | null;
   selfUser: User | null;
   chats: Chat[];
+  hasMoreChats: boolean;
+  nextChatsCursor: string | null;
   activeChatId: string;
   socket: Socket | null;
   typingByChat: Record<string, string[]>;
   isHydrated: boolean;
   isLoadingOlderByChat: Record<string, boolean>;
+  isLoadingMoreChats: boolean;
   initialize: () => Promise<void>;
   hydrate: () => Promise<void>;
+  loadMoreChats: () => Promise<void>;
   setActiveChat: (chatId: string) => void;
   setSocket: (socket: Socket | null) => void;
   disconnectRealtime: () => void;
@@ -78,11 +90,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
   selfUserId: null,
   selfUser: null,
   chats: [],
+  hasMoreChats: false,
+  nextChatsCursor: null,
   activeChatId: "",
   socket: null,
   typingByChat: {},
   isHydrated: false,
   isLoadingOlderByChat: {},
+  isLoadingMoreChats: false,
   initialize: async () => {
     if (!readAppJwt()) {
       set({ isHydrated: true });
@@ -95,7 +110,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
       await get().hydrate();
     } catch {
       writeAppJwt(null);
-      set({ selfUserId: null, selfUser: null, chats: [], activeChatId: "" });
+      set({
+        selfUserId: null,
+        selfUser: null,
+        chats: [],
+        hasMoreChats: false,
+        nextChatsCursor: null,
+        activeChatId: "",
+      });
     } finally {
       set({ isHydrated: true });
     }
@@ -111,6 +133,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
         selfUserId: payload.self.id,
         selfUser: payload.self,
         chats: payload.chats,
+        hasMoreChats: payload.hasMoreChats,
+        nextChatsCursor: payload.nextChatsCursor,
         activeChatId: activeChat?.id ?? "",
       });
 
@@ -134,7 +158,39 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
 
     if (cachedChats.length > 0) {
-      set({ chats: cachedChats, activeChatId: cachedChats[0].id });
+      set({
+        chats: cachedChats,
+        hasMoreChats: false,
+        nextChatsCursor: null,
+        activeChatId: cachedChats[0].id,
+      });
+    }
+  },
+  loadMoreChats: async () => {
+    const state = get();
+    if (!state.hasMoreChats || state.isLoadingMoreChats || !state.nextChatsCursor) {
+      return;
+    }
+
+    set({ isLoadingMoreChats: true });
+
+    try {
+      const params = new URLSearchParams({ cursor: state.nextChatsCursor });
+      const page = await apiRequest<ChatPagePayload>(`/chats?${params.toString()}`, { method: "GET" });
+
+      set((current) => {
+        const knownIds = new Set(current.chats.map((chat) => chat.id));
+        const newChats = page.chats.filter((chat) => !knownIds.has(chat.id));
+        return {
+          chats: [...current.chats, ...newChats],
+          hasMoreChats: page.hasMore,
+          nextChatsCursor: page.nextCursor,
+        };
+      });
+    } catch {
+      // Swallow so the list can retry on the next scroll intersection.
+    } finally {
+      set({ isLoadingMoreChats: false });
     }
   },
   setActiveChat: (chatId) => {
@@ -173,6 +229,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
       selfUserId: null,
       selfUser: null,
       chats: [],
+      hasMoreChats: false,
+      nextChatsCursor: null,
       activeChatId: "",
       socket: null,
       typingByChat: {},
@@ -244,6 +302,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     set((state) => ({
       chats: [chat, ...state.chats],
+      hasMoreChats: state.hasMoreChats,
+      nextChatsCursor: state.nextChatsCursor,
       activeChatId: state.activeChatId || chat.id,
     }));
 

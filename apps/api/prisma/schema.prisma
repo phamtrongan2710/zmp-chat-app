@@ -41,10 +41,12 @@ model Session {
 }
 
 model Chat {
-  id           String            @id
-  participants ChatParticipant[]
-  messages     Message[]
+  id            String            @id
+  lastMessageAt DateTime?         @map("last_message_at")
+  participants  ChatParticipant[]
+  messages      Message[]
 
+  @@index([lastMessageAt, id])
   @@map("chats")
 }
 
