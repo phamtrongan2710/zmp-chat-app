@@ -422,6 +422,19 @@ ul {
   min-width: 0;
 }
 
+.conversation-header-avatar {
+  position: relative;
+}
+
+.conversation-header-avatar .presence-dot {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--color-surface);
+}
+
 .conversation-header-text {
   min-width: 0;
 }

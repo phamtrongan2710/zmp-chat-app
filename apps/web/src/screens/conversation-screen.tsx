@@ -59,7 +59,10 @@ export function ConversationScreen() {
           <ChevronLeft size={24} strokeWidth={2.5} />
         </button>
         <div className="conversation-header-peer">
-          <Avatar url={peer?.avatarUrl ?? null} label={peer?.avatarLabel ?? "?"} className="header-avatar" />
+          <div className="conversation-header-avatar">
+            <Avatar url={peer?.avatarUrl ?? null} label={peer?.avatarLabel ?? "?"} className="header-avatar" />
+            {peer?.online ? <span className="presence-dot online" aria-label="online" /> : null}
+          </div>
           <div className="conversation-header-text">
             <div className="conversation-header-name">{peer?.name ?? chat.title}</div>
             <div className="conversation-header-status">{status}</div>
