@@ -1,14 +1,14 @@
-import { ChevronLeft } from "lucide-react";
-import { useEffect } from "react";
+import { CSSProperties, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Avatar } from "../components/chat/avatar";
 import { Composer } from "../components/chat/composer";
+import { ConversationHeader, getConversationPeer } from "../components/chat/conversation-header";
 import { ConversationView } from "../components/chat/conversation-view";
 import { useChatStore } from "../store/chat-store";
 
 export function ConversationScreen() {
   const { chatId = "" } = useParams<{ chatId: string }>();
   const navigate = useNavigate();
+  const [viewportStyle, setViewportStyle] = useState<CSSProperties>({});
   const setActiveChat = useChatStore((state) => state.setActiveChat);
   const selfUserId = useChatStore((state) => state.selfUserId);
   const chat = useChatStore((state) => state.chats.find((item) => item.id === chatId));
@@ -19,20 +19,30 @@ export function ConversationScreen() {
     return () => setActiveChat("");
   }, [chatId, setActiveChat]);
 
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+
+    const syncViewport = () => {
+      setViewportStyle({
+        "--conversation-viewport-height": `${vv.height}px`,
+        "--conversation-viewport-offset-top": `${vv.offsetTop}px`,
+      } as CSSProperties);
+    };
+
+    syncViewport();
+    vv.addEventListener("resize", syncViewport);
+    vv.addEventListener("scroll", syncViewport);
+    return () => {
+      vv.removeEventListener("resize", syncViewport);
+      vv.removeEventListener("scroll", syncViewport);
+    };
+  }, []);
+
   if (!chat) {
     return (
-      <section className="screen full-screen">
-        <header className="conversation-header-bar">
-          <button
-            type="button"
-            className="icon-button"
-            aria-label="Back"
-            onClick={() => navigate("/")}
-          >
-            <ChevronLeft size={24} strokeWidth={2.5} />
-          </button>
-          <div className="conversation-header-title">Conversation</div>
-        </header>
+      <section className="screen full-screen conversation-screen" style={viewportStyle}>
+        <ConversationHeader title="Conversation" onBack={() => navigate("/")} />
         <div className="empty-state">
           <div className="empty-state-title">Conversation not found</div>
           <button type="button" className="primary-button" onClick={() => navigate("/")}>
@@ -43,33 +53,21 @@ export function ConversationScreen() {
     );
   }
 
-  const peer = chat.participants.find((participant) => participant.id !== selfUserId);
+  const peer = getConversationPeer(chat, selfUserId);
   const peerIsTyping = peer ? (typingByChat[chatId] ?? []).includes(peer.id) : false;
   const status = peerIsTyping ? "typing..." : peer?.online ? "online" : "offline";
 
   return (
-    <section className="screen full-screen">
-      <header className="conversation-header-bar">
-        <button
-          type="button"
-          className="icon-button"
-          aria-label="Back"
-          onClick={() => navigate("/")}
-        >
-          <ChevronLeft size={24} strokeWidth={2.5} />
-        </button>
-        <div className="conversation-header-peer">
-          <div className="conversation-header-avatar">
-            <Avatar url={peer?.avatarUrl ?? null} label={peer?.avatarLabel ?? "?"} className="header-avatar" />
-            {peer?.online ? <span className="presence-dot online" aria-label="online" /> : null}
-          </div>
-          <div className="conversation-header-text">
-            <div className="conversation-header-name">{peer?.name ?? chat.title}</div>
-            <div className="conversation-header-status">{status}</div>
-          </div>
-        </div>
-      </header>
-      <ConversationView />
+    <section className="screen full-screen conversation-screen" style={viewportStyle}>
+      <div className="conversation-shell">
+        <ConversationHeader
+          title={chat.title}
+          peer={peer}
+          status={status}
+          onBack={() => navigate("/")}
+        />
+        <ConversationView />
+      </div>
       <Composer />
     </section>
   );

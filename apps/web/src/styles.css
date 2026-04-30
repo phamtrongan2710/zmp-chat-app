@@ -129,10 +129,16 @@ ul {
 .screen.full-screen {
   position: fixed;
   inset: 0;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   background: var(--color-bg);
+}
+
+.conversation-screen {
+  top: var(--conversation-viewport-offset-top, 0px);
+  height: var(--conversation-viewport-height, 100dvh);
 }
 
 .screen-header {
@@ -401,16 +407,24 @@ ul {
 
 /* ------- Conversation screen ------- */
 
+.conversation-shell {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+
 .conversation-header-bar {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 12px 12px 8px;
+  padding: calc(12px + var(--safe-top)) 12px 12px 8px;
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
   position: sticky;
   top: 0;
   z-index: 5;
+  flex-shrink: 0;
 }
 
 .conversation-header-bar .icon-button {
@@ -463,7 +477,6 @@ ul {
 }
 
 .messages {
-  flex: 1 1 auto;
   padding: 16px;
   overflow-y: auto;
   display: flex;
@@ -554,6 +567,9 @@ ul {
   border-top: 1px solid var(--color-border);
   background: var(--color-surface);
   flex-shrink: 0;
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
 }
 
 .composer-input {
