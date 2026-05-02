@@ -521,6 +521,52 @@ ul {
   line-height: 1.4;
 }
 
+/* Markdown styling inside message bubbles */
+.message-bubble p {
+  margin: 0;
+}
+.message-bubble p + p {
+  margin-top: 8px;
+}
+.message-bubble ul, .message-bubble ol {
+  margin: 8px 0;
+  padding-left: 20px;
+  list-style: initial;
+}
+.message-bubble li + li {
+  margin-top: 4px;
+}
+.message-bubble code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  background: rgba(0, 0, 0, 0.05);
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+.message-row.self .message-bubble code {
+  background: rgba(255, 255, 255, 0.2);
+}
+.message-bubble pre {
+  margin: 8px 0;
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 8px;
+  overflow-x: auto;
+}
+.message-row.self .message-bubble pre {
+  background: rgba(255, 255, 255, 0.1);
+}
+.message-bubble pre code {
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+}
+.message-bubble a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .message-row.self .message-bubble {
   background: var(--color-bubble-self);
   color: var(--color-bubble-self-text);

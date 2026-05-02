@@ -1,3 +1,5 @@
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import type { Message, User } from "../../store/chat-store";
 import { Avatar } from "./avatar";
 
@@ -31,7 +33,9 @@ export function MessageItem({ message, isSelf, isSelected, peer, onSelect }: Mes
           handleSelect();
         }}
       >
-        <div>{message.content}</div>
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+          {message.content}
+        </ReactMarkdown>
         <div className="message-meta">
           {formatMessageTime(message.createdAt)}
           {isSelf && isSelected ? ` | ${message.status}` : ""}
