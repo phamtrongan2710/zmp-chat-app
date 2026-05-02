@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { DEFAULT_AI_BOT_HANDLE } from "../ai/ai.constants";
 import { PrismaService } from "../database/prisma.service";
 
 export type SearchedUser = {
@@ -27,7 +28,9 @@ export class UsersService {
             },
           ],
         }
-      : { id: { not: excludeUserId } };
+      : {
+          AND: [{ id: { not: excludeUserId } }, { handle: DEFAULT_AI_BOT_HANDLE }],
+        };
 
     const rows = await this.prisma.user.findMany({
       where,
