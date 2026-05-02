@@ -1,6 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { MessageStatus } from "@prisma/client";
 import { randomUUID } from "node:crypto";
+import { DEFAULT_AI_BOT_HANDLE } from "../ai/ai.constants";
 import { PrismaService } from "../database/prisma.service";
 import { CreateMessageDto } from "./dto/create-message.dto";
 
@@ -399,7 +400,7 @@ export class ChatService {
       handle: row.handle,
       avatarLabel: row.avatarLabel,
       avatarUrl: row.avatarUrl,
-      online: this.onlineUsers.has(row.id),
+      online: row.handle === DEFAULT_AI_BOT_HANDLE || this.onlineUsers.has(row.id),
     };
   }
 

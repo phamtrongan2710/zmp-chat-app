@@ -8,7 +8,10 @@ import {
   WebSocketGateway,
   WebSocketServer,
 } from "@nestjs/websockets";
+import { Logger } from "@nestjs/common";
+import { randomUUID } from "node:crypto";
 import { Namespace, Server, Socket } from "socket.io";
+import { AiService } from "../ai/ai.service";
 import { AppJwtService } from "../auth/jwt.service";
 import { PrismaService } from "../database/prisma.service";
 import { ChatService } from "./chat.service";
@@ -25,8 +28,10 @@ import { TypingStateDto } from "./dto/typing-state.dto";
 export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server!: Server;
+  private readonly logger = new Logger(ChatGateway.name);
 
   constructor(
+    private readonly aiService: AiService,
     private readonly chatService: ChatService,
     private readonly jwtService: AppJwtService,
     private readonly prisma: PrismaService,
@@ -97,6 +102,7 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     const userId = this.requireUserId(socket);
     const message = await this.chatService.createMessageForUser(payload, userId);
     this.server.to(`chat:${payload.chatId}`).emit("message.created", message);
+    void this.maybeReplyAsAi(message);
     return message;
   }
 
@@ -153,4 +159,56 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     if (typeof userId !== "string") throw new Error("Unauthenticated socket");
     return userId;
   }
+
+  private async maybeReplyAsAi(message: CreateMessageDto): Promise<void> {
+    let botUser: Awaited<ReturnType<AiService["getBotParticipantForChat"]>> = null;
+
+    try {
+      botUser = await this.aiService.getBotParticipantForChat(message.chatId);
+      if (!botUser || this.aiService.isBotUserId(message.senderId, botUser.id)) {
+        return;
+      }
+
+      const typingUsers = this.chatService.updateTyping(message.chatId, botUser.id, true);
+      this.server.to(`chat:${message.chatId}`).emit("typing.updated", {
+        chatId: message.chatId,
+        typingUsers,
+      });
+
+      await delay(this.aiService.getTypingDelayMs());
+      const reply = await this.aiService.buildReply(message.chatId, message.content);
+      if (!reply) {
+        return;
+      }
+
+      const aiMessage = await this.chatService.createMessage({
+        id: randomUUID(),
+        chatId: message.chatId,
+        senderId: botUser.id,
+        content: reply,
+        createdAt: new Date().toISOString(),
+        status: "sent",
+      });
+
+      this.server.to(`chat:${message.chatId}`).emit("message.created", aiMessage);
+    } catch (error) {
+      this.logger.warn(`Failed to generate AI reply: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      if (!botUser) {
+        return;
+      }
+
+      const typingUsers = this.chatService.updateTyping(message.chatId, botUser.id, false);
+      this.server.to(`chat:${message.chatId}`).emit("typing.updated", {
+        chatId: message.chatId,
+        typingUsers,
+      });
+    }
+  }
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
 }

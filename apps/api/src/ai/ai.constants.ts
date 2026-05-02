@@ -1,0 +1,9 @@
+export const DEFAULT_AI_BOT_NAME = "Tấm AI";
+export const DEFAULT_AI_BOT_HANDLE = "tam-ai";
+export const DEFAULT_AI_BOT_AVATAR_LABEL = "TA";
+export const DEFAULT_LLM_MODEL = "gemini-2.5-flash-lite";
+export const DEFAULT_EMBEDDING_MODEL = "gemini-embedding-2";
+export const DEFAULT_RAG_DOCUMENT_PATH = "./storage/documents/Giai_Phap_Miniai_TamAI.pdf";
+export const DEFAULT_CHUNK_SIZE = 1200;
+export const DEFAULT_CHUNK_OVERLAP = 200;
+export const AI_TYPING_DELAY_MS = 300;
