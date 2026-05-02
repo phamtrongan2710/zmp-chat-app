@@ -72,3 +72,25 @@ model Message {
 
   @@map("messages")
 }
+
+model RagDocumentRegistry {
+  sourceFile String   @id @map("source_file")
+  fileHash   String   @map("file_hash")
+  chunkCount Int      @map("chunk_count")
+  updatedAt  DateTime @default(now()) @map("updated_at")
+
+  @@map("rag_document_registry")
+}
+
+model RagDocumentChunk {
+  id         String   @id
+  sourceFile String   @map("source_file")
+  fileHash   String   @map("file_hash")
+  chunkIndex Int      @map("chunk_index")
+  content    String
+  embedding  Json
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([sourceFile, chunkIndex], map: "rag_document_chunks_source_file_idx")
+  @@map("rag_document_chunks")
+}
