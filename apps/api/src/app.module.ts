@@ -8,9 +8,19 @@ import { ChatModule } from "./chat/chat.module";
 import { CryptoModule } from "./crypto/crypto.module";
 import { DatabaseModule } from "./database/database.module";
 import { UsersModule } from "./users/users.module";
+import { ZaloWebhookModule } from "./zalo-webhook/zalo-webhook.module";
 
 @Module({
-  imports: [ConfigModule.forRoot({ isGlobal: true }), DatabaseModule, CryptoModule, AuthModule, UsersModule, AiModule, ChatModule],
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
+    DatabaseModule,
+    CryptoModule,
+    AuthModule,
+    UsersModule,
+    AiModule,
+    ChatModule,
+    ZaloWebhookModule,
+  ],
   providers: [
     {
       provide: APP_GUARD,
