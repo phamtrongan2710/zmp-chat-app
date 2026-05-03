@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { DEFAULT_AI_BOT_HANDLE } from "../ai/ai.constants";
+import { AiService } from "../ai/ai.service";
 import { PrismaService } from "../database/prisma.service";
 
 export type SearchedUser = {
@@ -12,7 +12,10 @@ export type SearchedUser = {
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly aiService: AiService,
+  ) {}
 
   async search(query: string, excludeUserId: string): Promise<SearchedUser[]> {
     const trimmed = query.trim();
@@ -29,7 +32,7 @@ export class UsersService {
           ],
         }
       : {
-          AND: [{ id: { not: excludeUserId } }, { handle: DEFAULT_AI_BOT_HANDLE }],
+          AND: [{ id: { not: excludeUserId } }, { handle: this.aiService.getBotHandle() }],
         };
 
     const rows = await this.prisma.user.findMany({

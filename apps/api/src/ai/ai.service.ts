@@ -17,6 +17,7 @@ export class AiService implements OnModuleInit {
   private readonly logger = new Logger(AiService.name);
   private readonly botName: string;
   private readonly botHandle: string;
+  private botId: string | null = null;
   private readonly model: string;
   private readonly aiClient: GoogleGenAI | null;
 
@@ -33,6 +34,14 @@ export class AiService implements OnModuleInit {
     this.aiClient = apiKey ? new GoogleGenAI({ apiKey }) : null;
   }
 
+  getBotHandle(): string {
+    return this.botHandle;
+  }
+
+  getBotId(): string | null {
+    return this.botId;
+  }
+
   async onModuleInit(): Promise<void> {
     try {
       await this.ensureBotUser();
@@ -47,6 +56,7 @@ export class AiService implements OnModuleInit {
     });
 
     if (existing) {
+      this.botId = existing.id;
       if (existing.name !== this.botName || existing.avatarLabel !== DEFAULT_AI_BOT_AVATAR_LABEL) {
         await this.prisma.user.update({
           where: { id: existing.id },
@@ -59,7 +69,7 @@ export class AiService implements OnModuleInit {
       return;
     }
 
-    await this.prisma.user.create({
+    const created = await this.prisma.user.create({
       data: {
         id: randomUUID(),
         name: this.botName,
@@ -68,6 +78,7 @@ export class AiService implements OnModuleInit {
         avatarUrl: null,
       },
     });
+    this.botId = created.id;
   }
 
   async getBotUser() {

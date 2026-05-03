@@ -1,7 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { MessageStatus } from "@prisma/client";
 import { randomUUID } from "node:crypto";
-import { DEFAULT_AI_BOT_HANDLE } from "../ai/ai.constants";
+import { AiService } from "../ai/ai.service";
 import { PrismaService } from "../database/prisma.service";
 import { CreateMessageDto } from "./dto/create-message.dto";
 
@@ -48,7 +48,10 @@ export class ChatService {
   private readonly onlineUsers = new Map<string, number>();
   private readonly typingState = new Map<string, string[]>();
 
-  constructor(private readonly prismaService: PrismaService) {}
+  constructor(
+    private readonly prismaService: PrismaService,
+    private readonly aiService: AiService,
+  ) {}
 
   async getBootstrap(userId: string): Promise<{ self: User; chats: Chat[]; hasMoreChats: boolean; nextChatsCursor: string | null }> {
     const selfRow = await this.prismaService.user.findUnique({
@@ -384,7 +387,8 @@ export class ChatService {
       select: { userId: true },
     });
 
-    return rows.some((row) => row.userId !== senderId && this.onlineUsers.has(row.userId));
+    const botId = this.aiService.getBotId();
+    return rows.some((row) => row.userId !== senderId && (row.userId === botId || this.onlineUsers.has(row.userId)));
   }
 
   private mapUser(row: {
@@ -400,12 +404,17 @@ export class ChatService {
       handle: row.handle,
       avatarLabel: row.avatarLabel,
       avatarUrl: row.avatarUrl,
-      online: row.handle === DEFAULT_AI_BOT_HANDLE || this.onlineUsers.has(row.id),
+      online: row.handle === this.aiService.getBotHandle() || this.onlineUsers.has(row.id),
     };
   }
 
   listOnlineUserIds(): string[] {
-    return Array.from(this.onlineUsers.keys());
+    const ids = Array.from(this.onlineUsers.keys());
+    const botId = this.aiService.getBotId();
+    if (botId && !ids.includes(botId)) {
+      ids.push(botId);
+    }
+    return ids;
   }
 
   private buildChatCursorWhere(cursor: ChatCursor | null) {
